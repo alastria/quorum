@@ -729,13 +729,15 @@ type pendStats struct {
 func (s *Service) reportPending(conn *websocket.Conn) error {
 	// Retrieve the pending count from the local blockchain
 	var pending int
+	var locals *core.TxPool
 	if s.eth != nil {
 		pending, _ = s.eth.TxPool().Stats()
+		locals = s.eth.TxPool().local()
 	} else {
 		pending = s.les.TxPool().Stats()
 	}
 	// Assemble the transaction stats and send it to the server
-	log.Trace("Sending pending transactions to ethstats", "count", pending)
+	log.Trace("Sending pending transactions to ethstats", "count", pending, "local", len(locals))
 
 	stats := map[string]interface{}{
 		"id": s.node,
