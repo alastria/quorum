@@ -207,6 +207,7 @@ func (s *Service) loop() {
 
 			// Notify of new transaction events, but drop if too frequent
 			case <-txEventCh:
+				log.Info("NEW PENDING TXS EVENT RECEIVED", "pending", "***")
 				if time.Duration(mclock.Now()-lastTx) < time.Second {
 					continue
 				}
