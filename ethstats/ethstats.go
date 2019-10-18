@@ -732,7 +732,7 @@ func (s *Service) reportPending(conn *websocket.Conn) error {
 	var locals *core.TxPool
 	if s.eth != nil {
 		pending, _ = s.eth.TxPool().Stats()
-		locals = s.eth.TxPool().local()
+		locals = s.eth.TxPool().Local()
 	} else {
 		pending = s.les.TxPool().Stats()
 	}
