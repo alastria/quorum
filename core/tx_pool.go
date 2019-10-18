@@ -572,6 +572,7 @@ func (pool *TxPool) Local() map[common.Address]types.Transactions {
 	}
 	return txs
 }
+
 // local retrieves all currently known local transactions, grouped by origin
 // account and sorted by nonce. The returned transaction set is a copy and can be
 // freely modified by calling code.
