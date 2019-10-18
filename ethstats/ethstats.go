@@ -207,7 +207,6 @@ func (s *Service) loop() {
 
 			// Notify of new transaction events, but drop if too frequent
 			case <-txEventCh:
-				log.Info("NEW PENDING TXS EVENT RECEIVED", "pending", "***")
 				if time.Duration(mclock.Now()-lastTx) < time.Second {
 					continue
 				}
@@ -729,21 +728,28 @@ type pendStats struct {
 func (s *Service) reportPending(conn *websocket.Conn) error {
 	// Retrieve the pending count from the local blockchain
 	var pending int
-	var locals *core.TxPool
+	var locals map[common.Address]types.Transactions
 	if s.eth != nil {
 		pending, _ = s.eth.TxPool().Stats()
-		locals = s.eth.TxPool().local()
+		locals = s.eth.TxPool().Local()
 	} else {
 		pending = s.les.TxPool().Stats()
 	}
 	// Assemble the transaction stats and send it to the server
 	log.Trace("Sending pending transactions to ethstats", "count", pending, "local", len(locals))
 
+	localaccounts := make([]common.Address, 0, len(locals))
+	for acc := range locals {
+    		localaccounts = append(localaccounts, acc)
+	}
+
 	stats := map[string]interface{}{
 		"id": s.node,
 		"stats": &pendStats{
 			Pending: pending,
 		},
+		"local": len(locals),
+		"accounts": localaccounts,
 	}
 	report := map[string][]interface{}{
 		"emit": {"pending", stats},
