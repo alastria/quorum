@@ -754,6 +754,7 @@ func (s *Service) reportPending(conn *websocket.Conn) error {
 	report := map[string][]interface{}{
 		"emit": {"pending", stats},
 	}
+
 	return websocket.JSON.Send(conn, report)
 }
 
