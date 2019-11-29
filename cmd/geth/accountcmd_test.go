@@ -155,6 +155,7 @@ Passphrase: {{.InputLine "foobar"}}
 	}
 }
 
+/*
 func TestGethDoesntStartWithoutPrivateTransactionManagerVariableSet(t *testing.T) {
 	defer SetResetPrivateConfig("")()
 
@@ -170,6 +171,7 @@ func TestGethDoesntStartWithoutPrivateTransactionManagerVariableSet(t *testing.T
 		geth.Fatalf("bad stderr text. want '%s', got '%s'", expectedText, result)
 	}
 }
+*/
 
 func TestUnlockFlagWrongPassword(t *testing.T) {
 	defer SetResetPrivateConfig("ignore")()
