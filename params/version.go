@@ -27,8 +27,8 @@ const (
 	VersionMeta  = "stable" // Version metadata to append to the version string
 
 	QuorumVersionMajor = 2
-	QuorumVersionMinor = 2
-	QuorumVersionPatch = 3
+	QuorumVersionMinor = 3
+        QuorumVersionPatch = 0
 	QuorumVersionMeta  = "0.Alastria_EthNetstats_IBFT"
 )
 
