@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 
 	fmt "fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -42,6 +43,8 @@ func deriveSigner(V *big.Int) Signer {
 	// joel: this is one of the two places we used a wrong signer to print txes
 	if V.Sign() != 0 && isProtectedV(V) {
 		return NewEIP155Signer(deriveChainId(V))
+	} else if isPrivate(V) {
+		return QuorumPrivateTxSigner{}
 	} else {
 		return HomesteadSigner{}
 	}
@@ -200,6 +203,14 @@ func (tx *Transaction) To() *common.Address {
 	}
 	to := *tx.data.Recipient
 	return &to
+}
+
+func (tx *Transaction) From() common.Address {
+	signer := deriveSigner(tx.data.V)
+	if from, err := Sender(signer, tx); err == nil {
+		return from
+	}
+	return common.Address{}
 }
 
 // Hash hashes the RLP encoding of tx.
@@ -404,7 +415,7 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 	for from, accTxs := range txs {
 		// Ensure the sender address is from the signer
 		acc, err := Sender(signer, accTxs[0])
-		if (err == nil) {
+		if err == nil {
 			heads = append(heads, accTxs[0])
 			txs[acc] = accTxs[1:]
 		} else {
@@ -498,6 +509,14 @@ func (tx *Transaction) IsPrivate() bool {
 	return tx.data.V.Uint64() == 37 || tx.data.V.Uint64() == 38
 }
 
+/*
+ * Indicates that a transaction is private, but doesn't necessarily set the correct v value, as it can be called on
+ * an unsigned transaction.
+ * pre homestead signer, all v values were v=27 or v=28, with EIP155Signer that change,
+ * but SetPrivate() is also used on unsigned transactions to temporarily set the v value to indicate
+ * the transaction is intended to be private, and so that the correct signer can be selected. The signer will correctly
+ * set the valid v value (37 or 38): This helps minimize changes vs upstream go-ethereum code.
+ */
 func (tx *Transaction) SetPrivate() {
 	if tx.IsPrivate() {
 		return

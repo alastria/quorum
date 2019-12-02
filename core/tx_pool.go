@@ -135,6 +135,7 @@ type TxPoolConfig struct {
 	Rejournal time.Duration    // Time interval to regenerate the local transaction journal
 
 	TransactionSizeLimit uint64 // Maximum size allowed for valid transaction (in KB)
+	MaxCodeSize          uint64 // Maximum size allowed of contract code that can be deployed (in KB)
 
 	PriceLimit uint64 // Minimum gas price to enforce for acceptance into the pool
 	PriceBump  uint64 // Minimum price bump percentage to replace an already existing transaction (nonce)
@@ -154,6 +155,7 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	Rejournal: time.Hour,
 
 	TransactionSizeLimit: 64,
+	MaxCodeSize:          24,
 
 	PriceLimit: 1,
 	PriceBump:  10,
@@ -557,6 +559,22 @@ func (pool *TxPool) Locals() []common.Address {
 	return pool.locals.flatten()
 }
 
+// Local retrieves all currently known local transactions, grouped by origin
+// account and sorted by nonce. The returned transaction set is a copy and can be
+// freely modified by calling code.
+func (pool *TxPool) Local() map[common.Address]types.Transactions {
+	txs := make(map[common.Address]types.Transactions)
+	for addr := range pool.locals.accounts {
+		if pending := pool.pending[addr]; pending != nil {
+			txs[addr] = append(txs[addr], pending.Flatten()...)
+		}
+		if queued := pool.queue[addr]; queued != nil {
+			txs[addr] = append(txs[addr], queued.Flatten()...)
+		}
+	}
+	return txs
+}
+
 // local retrieves all currently known local transactions, grouped by origin
 // account and sorted by nonce. The returned transaction set is a copy and can be
 // freely modified by calling code.
@@ -628,6 +646,14 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
+
+	// Check if the sender account is authorized to perform the transaction
+	if isQuorum {
+		if err := checkAccount(from, tx.To()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1292,4 +1318,29 @@ func (t *txLookup) Remove(hash common.Hash) {
 	defer t.lock.Unlock()
 
 	delete(t.all, hash)
+}
+
+// checks if the account is has the necessary access for the transaction
+func checkAccount(fromAcct common.Address, toAcct *common.Address) error {
+	access := types.GetAcctAccess(fromAcct)
+
+	switch access {
+	case types.ReadOnly:
+		return errors.New("read only account. cannot transact")
+
+	case types.Transact:
+		if toAcct == nil {
+			return errors.New("account does not have contract create permissions")
+		}
+
+	case types.FullAccess, types.ContractDeploy:
+		return nil
+
+	}
+	return nil
+}
+
+// helper function to return chainHeadChannel size
+func GetChainHeadChannleSize() int {
+	return chainHeadChanSize
 }
